@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f9f5">
+  <title>Herdr Team Workflows — your team, in motion</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="#" aria-label="Herdr Office"><span class="brand-mark">h</span>herdr<span class="brand-office">office</span></a>
+    <div class="workspace-label">YOUR WORKSPACE</div>
+    <button class="workspace-card" id="workspace-card"><span class="workspace-icon">PS</span><span><strong id="sidebar-team">Product studio</strong><small>Custom team</small></span><span class="chevron">⌄</span></button>
+    <nav aria-label="Main navigation">
+      <button class="nav-item active" data-view="office"><span class="nav-icon">▦</span>Office<span class="nav-dot"></span></button>
+      <button class="nav-item" data-view="team"><span class="nav-icon">♧</span>Team<span class="nav-count" id="team-count">4</span></button>
+      <button class="nav-item" data-view="workflow"><span class="nav-icon">⇢</span>Workflow</button>
+      <button class="nav-item" data-view="execution"><span class="nav-icon">▷</span>Execution</button>
+      <button class="nav-item" data-view="activity"><span class="nav-icon">◷</span>Activity</button>
+    </nav>
+    <div class="sidebar-note"><span class="small-spark">✳</span><strong>A place to create.</strong><p>Clear roles.<br>Shared purpose.<br>You in control.</p><div class="pixel-sprout" aria-hidden="true">▟▙<br>▝▘<br>▰</div></div>
+    <div class="sidebar-bottom"><span class="version">FIRST EDITION <b>v0.1</b></span><button id="motion-toggle" class="motion-toggle" aria-pressed="false">◌ <span>Reduce motion</span></button><span class="local-note"><i></i> Your data stays in this browser</span></div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar"><div class="breadcrumbs">Workspace <span>/</span> <strong id="breadcrumb">Office</strong></div><div class="topbar-right"><span class="connection-label" id="connection-label"><i></i>Checking Herdr</span><span class="topbar-separator"></span><span class="user-avatar" title="You are in control">K</span></div></header>
+    <main id="main" tabindex="-1">
+      <section class="page-heading"><div><div class="eyebrow" id="eyebrow">YOUR AGENT WORKSPACE</div><h1 id="page-title">Your team. In motion<span>.</span></h1><p id="page-subtitle">A shared space to turn ideas into outcomes.</p></div><div class="heading-actions"><div class="mode-switch" aria-label="View mode"><button id="mode-demo" class="selected" aria-pressed="true">Interactive demo</button><button id="mode-live" aria-pressed="false"><span class="live-dot"></span>Live Herdr</button></div><button class="button primary" id="new-demand"><span>＋</span> New task</button></div></section>
+      <div id="mode-notice" class="mode-notice"><span class="notice-symbol">◇</span><span><strong>Demo environment.</strong> Stages are simulated. No agents, code, or tests are executed.</span><span class="notice-tag">INTERACTIVE</span></div>
+      <div id="content"></div>
+      <footer class="page-footer"><span><span class="footer-mark">▦</span> Built for agent teams. Directed by you.</span><button id="export-config">Export team ↓</button></footer>
+    </main>
+  </div>
+  <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+  <aside id="agent-drawer" class="agent-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden></aside>
+  <dialog id="demand-dialog" aria-labelledby="demand-title">
+    <form id="demand-form"><div class="dialog-heading"><span class="eyebrow">A NEW IDEA</span><button type="button" class="icon-button" id="close-demand" aria-label="Close">×</button></div><h2 id="demand-title">What are we building?</h2><p>Give your team a task and try the workflow.</p><label for="demand-input">Your task</label><textarea id="demand-input" maxlength="500" rows="4" placeholder="E.g. add dark mode to the settings page" required></textarea><div class="dialog-hint">◇ Simulation only. No files will be changed.</div><div class="dialog-actions"><button type="button" class="button secondary" id="example-demand">Use an example</button><button class="button primary" type="submit">Start demo →</button></div></form>
+  </dialog>
+  <dialog id="feedback-dialog" aria-labelledby="feedback-title"><form id="feedback-form"><div class="dialog-heading"><span class="eyebrow">FEEDBACK FOR YOUR TEAM</span><button type="button" class="icon-button" id="close-feedback" aria-label="Close">×</button></div><h2 id="feedback-title">What needs to change?</h2><p>The task returns to the previous stage with your feedback.</p><label for="feedback-input">Reason for changes</label><textarea id="feedback-input" maxlength="500" rows="4" required placeholder="Describe the changes you need…"></textarea><div class="dialog-actions"><button class="button primary" type="submit">Request changes →</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

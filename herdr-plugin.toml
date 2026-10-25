@@ -1,0 +1,12 @@
+id = "herdr-team-workflow"
+name = "Herdr Team Workflows"
+version = "0.2.0"
+description = "An agent office with versioned plan approvals, isolated worktrees, and inspectable workflow evidence."
+min_herdr_version = "0.9.5"
+platforms = ["macos"]
+
+[[panes]]
+id = "office"
+title = "Team Workflows Server"
+placement = "tab"
+command = ["python3", "server.py", "--port", "0", "--open"]

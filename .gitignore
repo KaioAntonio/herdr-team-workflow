@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+node_modules/
+.state/
+.hwf/tmp/
+.hwf/config.local.yaml
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
