@@ -1,3 +1,26 @@
+.workflow-selection { margin-top: 22px; border: 1px solid var(--line); background: var(--soft); padding: 18px; border-radius: 12px; }
+.workflow-selection-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.workflow-selection-heading .eyebrow { font-size: 9px; margin-bottom: 6px; }
+.workflow-selection-heading h3 { font-size: 14px; }
+.workflow-selection-heading .button { font-size: 11px; background: var(--paper); }
+.workflow-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; list-style: none; margin: 20px 0 12px; padding: 0; }
+.workflow-preview li { min-width: 0; border-left: 2px solid #b6cba6; padding-left: 8px; }
+.workflow-preview strong, .workflow-preview small, .workflow-preview span { display: block; overflow-wrap: anywhere; line-height: 1.6; }
+.workflow-preview strong { font-size: 11px; }
+.workflow-preview small { color: var(--muted); font-size: 10px; }
+.workflow-preview span { font-size: 9px; color: var(--green); margin-top: 4px; }
+.workflow-selection-error { color: #805723; line-height: 1.7; font-size: 12px; margin-top: 14px; }
+#workflow-picker { max-width: 630px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.workflow-options { display: grid; gap: 12px; }
+.workflow-option { text-align: left; display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); padding: 18px; width: 100%; }
+.workflow-option.selected { border-color: var(--green); background: var(--soft); }
+.workflow-option:not(:disabled):hover { border-color: #86a079; }
+.workflow-option strong { font-size: 15px; }
+.workflow-option > span:not(.workflow-option-badge) { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.workflow-option .workflow-option-badge { font-size: 9px; letter-spacing: 1px; color: var(--green); }
+.workflow-option small { font-size: 11px; line-height: 1.7; color: #805723; }
+#workflow-picker .workflow-picker-note { margin-bottom: 0; }
+@media (max-width: 600px) { .workflow-selection { padding: 14px; } #workflow-picker { padding: 20px; } .workflow-preview { grid-template-columns: 1fr; gap: 12px; } }
 .heading-actions[hidden] { display: none; }
 .execution-intro { padding: 24px; display: flex; align-items: flex-start; gap: 20px; justify-content: space-between; margin-bottom: 18px; }
 .execution-intro h2, .execution-setup h2, .execution-empty h2 { font-size: 18px; margin: 0 0 10px; }

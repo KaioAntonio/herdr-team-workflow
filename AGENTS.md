@@ -47,3 +47,10 @@ The Office prototype predates this repository. Preserve known-default migration
 from Portuguese without overwriting user-authored text or pending demo approvals.
 Herdr World and Herdr Agent Office already cover broad visual agent management;
 focus this project on usable workflow contracts, not duplicating their IDE.
+
+Workflow choices live in `workflows.js`. Presets must clone the team, preserve
+agent instructions, keep mandatory plan approval, and never modify the editable
+workflow or active-run snapshots. Selection is remembered per browser tab.
+Refresh sanitized README PNGs with `SCREENSHOT_DIR=docs/images` when running the
+browser suite. Screenshot generation uses demo/configuration fixtures only;
+never capture real task results, private local paths, or workspace metadata.

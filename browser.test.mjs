@@ -60,7 +60,7 @@ try {
       if (await evaluate(expression)) return;
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    throw new Error(`Timed out: ${expression}`);
+    throw new Error(`Timed out: ${expression}; browser errors: ${JSON.stringify(errors)}; state: ${JSON.stringify(await evaluate("({hidden:document.hidden,fixtureStatus:window.__executionFixture?.status,active:document.activeElement?.id,workflow:document.querySelector('#execution-workflow-name')?.textContent,runVisible:!!document.querySelector('.execution-run')})"))}`);
   };
   const check = async (name, expression) => {
     assert.equal(await evaluate(expression), true, name);
@@ -72,6 +72,8 @@ try {
   const submit = selector => evaluate(`document.querySelector(${JSON.stringify(selector)}).requestSubmit()`);
   await call("Runtime.enable");
   await call("Page.enable");
+  await call("Page.bringToFront");
+  await call("Emulation.setFocusEmulationEnabled", { enabled: true });
   await call("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
   await call("Page.navigate", { url: origin });
   await wait("!!document.querySelector('#office-canvas')");
@@ -178,12 +180,14 @@ try {
   }
   const fixtureScript = `(() => {
     const realFetch = window.fetch.bind(window);
+    const documentation = sessionStorage.getItem('workflow-docs-preview') === 'true';
     window.__executionCalls = [];
     window.__executionFixture = JSON.parse(sessionStorage.getItem('workflow-ui-fixture') || 'null');
     const respond = (body, status = 200) => Promise.resolve(new Response(JSON.stringify(body), {status, headers:{'Content-Type':'application/json'}}));
     window.fetch = async (input, options = {}) => {
       const path = new URL(typeof input === 'string' ? input : input.url, location.origin).pathname;
-      if (path === '/api/session') return respond({token:'ui-fixture-token', capabilities:{available:true, version:'0.15.1', workspace:'fixture-workspace', message:'UI fixture only — no agents are started.'}});
+      if (path === '/api/session') return respond({token:'ui-fixture-token', capabilities:{available:true, version:'0.15.1', workspace:documentation ? 'preview-workspace' : 'fixture-workspace', message:documentation ? 'Configuration preview — no agents are running.' : 'UI fixture only — no agents are started.'}});
+      if (path === '/api/herdr/agents' && documentation) return respond({connected:false,agents:[],workspace:'',message:'Demo preview — no live sessions connected.'});
       if (path === '/api/runs' && (!options.method || options.method === 'GET')) return respond({runs:window.__executionFixture ? [window.__executionFixture] : []});
       if (path.startsWith('/api/runs') && options.method === 'POST') {
         const payload = JSON.parse(options.body);
@@ -209,6 +213,22 @@ try {
   await wait("document.querySelector('#execution-capabilities').textContent.includes('UI fixture only')");
   await wait("!document.querySelector('#execution-submit').disabled");
   await check("execution clearly discloses opt-in agents and unchanged permissions", "document.querySelector('#mode-notice').textContent.includes('Opt-in real execution') && document.querySelector('.execution-consent').textContent.includes('not a sandbox')");
+  await click('[data-execution-action="choose-workflow"]');
+  await check("workflow selection opens an accessible dialog without launching agents", "document.querySelector('#workflow-picker').open && document.querySelector('#workflow-picker').getAttribute('aria-labelledby') === 'workflow-picker-title' && document.querySelectorAll('[data-workflow-choice]').length === 3 && window.__executionCalls.length === 0");
+  await click('[data-workflow-choice="reviewed-delivery"]');
+  await check("a workflow choice updates the preview and its approval checkpoints", "!document.querySelector('#workflow-picker').open && document.querySelector('#execution-workflow-name').textContent === 'Plan, build & review' && document.querySelector('#execution-workflow-preview').textContent.match(/Your approval/g).length === 1");
+  await click('[data-view="workflow"]');
+  await check("choosing a preset does not overwrite the user's editable workflow", "document.querySelectorAll('[data-stage-field=approval]')[2].checked === true");
+  await click('[data-view="execution"]');
+  await evaluate("document.querySelector('[data-execution-action=choose-workflow]').focus()");
+  await click('[data-execution-action="choose-workflow"]');
+  await call("Input.dispatchKeyEvent", { type: "rawKeyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
+  await call("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27, nativeVirtualKeyCode: 27 });
+  await wait("!document.querySelector('#workflow-picker').open");
+  await check("Escape closes the picker and restores keyboard focus", "document.activeElement.dataset.executionAction === 'choose-workflow'");
+  await click('[data-execution-action="choose-workflow"]');
+  await click('[data-workflow-choice="human-delivery"]');
+  await check("human-approved delivery previews both human checkpoints", "document.querySelector('#execution-workflow-name').textContent === 'Human-approved delivery' && document.querySelector('#execution-workflow-preview').textContent.match(/Your approval/g).length === 2");
   await fill("#execution-repository", "/fixture/repository");
   await fill("#execution-task", "UI fixture task — no paid agents");
   await fill("#execution-checks", '[["python3","-m","unittest"]]');
@@ -216,6 +236,7 @@ try {
   await submit("#execution-start");
   await wait("!!document.querySelector('.execution-run')");
   await check("execution submits consent, argv checks, team snapshot, and the mutation token", "window.__executionCalls.length === 1 && window.__executionCalls[0].payload.consent === true && Array.isArray(window.__executionCalls[0].payload.checks[0]) && window.__executionCalls[0].payload.config.agents.length === 4 && window.__executionCalls[0].token === 'ui-fixture-token'");
+  await check("execution receives the chosen workflow rather than a mutable demo run", "window.__executionCalls[0].payload.config.stages[2].approval === true && !('run' in window.__executionCalls[0].payload.config)");
   await check("a running workflow cannot be started a second time", "document.querySelector('#execution-submit').disabled && !document.querySelector('[data-execution-action=approve]')");
   await evaluate("window.__executionFixture.status = 'awaiting_approval'; window.__executionFixture.plan = {text:'Inspect the fixture and make one bounded change.',revision:1,hash:'d'.repeat(64),summary:'Actual-plan UI fixture'}");
   await wait("!!document.querySelector('[data-execution-action=approve]')");
@@ -232,6 +253,10 @@ try {
   await click('[data-view="execution"]');
   await wait("document.querySelector('#execution-current').textContent.includes('Implementing')");
   await check("execution reload reads persisted state without redispatching", "window.__executionCalls.length === 0");
+  await check("the selected workflow survives a reload in the same tab", "document.querySelector('#execution-workflow-name').textContent === 'Human-approved delivery'");
+  await click('[data-execution-action="choose-workflow"]');
+  await click('[data-workflow-choice="reviewed-delivery"]');
+  await check("choosing a future workflow does not alter an active run snapshot", "window.__executionFixture.config.stages[2].approval === true && window.__executionCalls.length === 0");
   await click('[data-execution-action="office"]');
   await check("the Office links to execution evidence instead of simulated advancement", "document.querySelector('[data-action=execution]').textContent.includes('evidence') && !document.querySelector('[data-action=advance]')");
   await click('[data-agent="planner"]');
@@ -244,6 +269,31 @@ try {
   await check("final acceptance is bound to the displayed review", "window.__executionCalls.find(item => item.path.endsWith('/accept')).payload.review_hash === 'f'.repeat(64)");
   await call("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await check("execution has no horizontal overflow on mobile", "document.documentElement.scrollWidth <= innerWidth");
+  await click('[data-execution-action="choose-workflow"]');
+  await check("the workflow picker fits a mobile viewport", "document.querySelector('#workflow-picker').open && document.querySelector('#workflow-picker').getBoundingClientRect().right <= innerWidth && document.querySelector('#workflow-picker').scrollWidth <= document.querySelector('#workflow-picker').clientWidth");
+  await click('[data-execution-action="close-workflow"]');
+  if (process.env.SCREENSHOT_DIR) {
+    await evaluate("(async () => {const {initialState,startRun}=await import('/model.js');const preview=initialState();startRun(preview,'Add a search field to the project board.');localStorage.setItem('herdr-office:v1',JSON.stringify(preview));sessionStorage.removeItem('workflow-ui-fixture');sessionStorage.setItem('workflow-docs-preview','true');sessionStorage.setItem('herdr-team-workflow:selection','human-delivery');})()");
+    await call("Emulation.setDeviceMetricsOverride", { width: 1440, height: 1080, deviceScaleFactor: 1, mobile: false });
+    await call("Page.reload");
+    await wait("!!document.querySelector('#office-canvas') && document.querySelector('#connection-label').textContent.includes('disconnected')");
+    await new Promise(resolve => setTimeout(resolve, 300));
+    const captureDocumentation = async name => {
+      const image = await call("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      const path = join(process.env.SCREENSHOT_DIR, name);
+      await writeFile(path, Buffer.from(image.data, "base64"));
+      console.log(`DOCUMENTATION SCREENSHOT ${path}`);
+    };
+    await captureDocumentation("office.png");
+    await click('[data-view="execution"]');
+    await wait("document.querySelector('#execution-capabilities').textContent.includes('Configuration preview') && !document.querySelector('.execution-run')");
+    await fill("#execution-repository", "/path/to/your/repository");
+    await fill("#execution-task", "Add a search field to the project board. Preserve keyboard navigation and cover filtering with tests.");
+    await captureDocumentation("execution.png");
+    await click('[data-execution-action="choose-workflow"]');
+    await captureDocumentation("workflow-picker.png");
+    await click('[data-execution-action="close-workflow"]');
+  }
   assert.deepEqual(errors, [], `Browser runtime errors: ${JSON.stringify(errors)}`);
   console.log(`PASS no browser runtime exceptions\n${checks + 1} browser checks passed`);
 } finally {

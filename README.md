@@ -7,6 +7,17 @@ follow implementation and independent review in visible Herdr agent sessions.
 The Office is the interface. The workflow state and its evidence are the source
 of truth. This is an executable MVP, not an alternative IDE or an agent sandbox.
 
+## Screenshots
+
+The Office uses demo data. The configuration screens show a preview, not a
+completed live-agent run. No real task results or local workspace data are shown.
+
+![Pixel-art Office with the simulated team, task, and stage handoffs](docs/images/office.png)
+
+| Choose a workflow | Configure an execution |
+| --- | --- |
+| ![Workflow picker with the current configuration and two approval variants](docs/images/workflow-picker.png) | ![Execution form with the selected workflow, owners, and approval checkpoints](docs/images/execution.png) |
+
 ## Requirements
 
 - macOS for the Herdr plugin and native browser launcher.
@@ -56,10 +67,17 @@ server does not cancel HWF runs or stop agent panes.
 ## First real workflow
 
 1. In **Team**, edit responsibilities, context, and expected deliverables.
-2. In **Workflow**, retain the three-stage Planning → Implementation → Review
-   template. Plan approval is mandatory; implementation-to-review is automatic.
-   Review may require final human acceptance. Extra stages remain demo-only.
-3. In **Execution**, choose a **clean Git repository with a committed baseline**.
+2. In **Execution**, click **Choose workflow**:
+   - **Current workflow** uses the stages you configured in the Workflow editor.
+   - **Plan, build & review** requires plan approval and ends after verified,
+     independent review.
+   - **Human-approved delivery** also requires your final acceptance.
+   All executable choices use Planning → Implementation → Review. Extra stages
+   remain demo-only; arbitrary YAML imports are not supported.
+   The picker preserves your team and instructions, shows stage owners and
+   checkpoints, and remembers your choice in the current tab. It does not edit
+   an active run or overwrite your editable workflow.
+3. Choose a **clean Git repository with a committed baseline**.
    Provide one bounded task and explicit verification argument arrays, for example
    `[["npm", "test"]]` or `[["python3", "-m", "unittest"]]`.
 4. Read the consent statement and start planning. The source working tree is not
@@ -132,6 +150,10 @@ HWF_TEST_BIN=/absolute/path/to/hwf python3 -m unittest test_hwf_contract.py
 The normal suite exercises workflow execution with a fake runner and real
 temporary Git repositories. That is not an end-to-end test of paid Devin agents.
 Do not mistake passing fixtures for a live-agent qualification.
+
+To refresh the sanitized README images after UI changes, run the browser suite
+with `SCREENSHOT_DIR=docs/images`. It captures only demo/configuration screens,
+using a separate temporary Chrome profile and fixture data.
 
 ## Related projects
 

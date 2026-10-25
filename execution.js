@@ -1,3 +1,5 @@
+import { WORKFLOWS, selectWorkflow } from "./workflows.js";
+
 const escape = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
 const statuses = {
   preparing: "Preparing worktree", dispatching: "Confirming dispatch", planning: "Planning",
@@ -20,6 +22,11 @@ export class Execution {
     this.busy = false;
     this.pending = null;
     this.epoch = 0;
+    this.workflowId = "current";
+    try {
+      const saved = sessionStorage.getItem("herdr-team-workflow:selection");
+      if (WORKFLOWS.some(item => item.id === saved)) this.workflowId = saved;
+    } catch {}
     this.draft = { repository: "", task: "", checks: '[["npm", "test"]]', consent: false };
     document.addEventListener("submit", event => {
       if (event.target.id === "execution-start") { event.preventDefault(); this.start(event.target); }
@@ -32,12 +39,48 @@ export class Execution {
       }
     });
     document.addEventListener("click", event => {
+      const choice = event.target.closest("[data-workflow-choice]");
+      if (choice && !choice.disabled) this.chooseWorkflow(choice.dataset.workflowChoice);
       const button = event.target.closest("[data-execution-action]");
       if (button && !button.disabled) this.action(button.dataset.executionAction);
     });
   }
 
   get current() { return this.runs[0] || null; }
+
+  selectedWorkflow() {
+    try { return { config: selectWorkflow(this.configuration(), this.workflowId), issue: "" }; }
+    catch (error) { return { config: null, issue: error.message }; }
+  }
+
+  openWorkflowPicker() {
+    if (this.busy || this.pending) return;
+    let dialog = document.querySelector("#workflow-picker");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "workflow-picker";
+      dialog.setAttribute("aria-labelledby", "workflow-picker-title");
+      document.body.append(dialog);
+    }
+    dialog.innerHTML = `<div class="dialog-heading"><span class="eyebrow">HOW YOUR TEAM DELIVERS</span><button type="button" class="icon-button" data-execution-action="close-workflow" aria-label="Close workflow picker">×</button></div><h2 id="workflow-picker-title">Choose your workflow</h2><p>Pick the approval checkpoints for your next execution. Your team and agent instructions are preserved. Active runs never change.</p>
+      <div class="workflow-options">${WORKFLOWS.map(item => {
+        let issue = "";
+        try { selectWorkflow(this.configuration(), item.id); } catch (error) { issue = error.message; }
+        return `<button type="button" class="workflow-option ${item.id === this.workflowId ? "selected" : ""}" data-workflow-choice="${item.id}" aria-pressed="${item.id === this.workflowId}" ${issue ? "disabled" : ""}><span class="workflow-option-badge">${item.badge}</span><strong>${escape(item.title)}${item.id === this.workflowId ? '<span aria-hidden="true"> ✓</span>' : ""}</strong><span>${escape(item.description)}</span>${issue ? `<small>${escape(issue)}</small>` : ""}</button>`;
+      }).join("")}</div><p class="workflow-picker-note">All executable choices keep plan approval, service-run verification, and independent review. Arbitrary YAML workflows are not supported.</p>`;
+    dialog.showModal();
+  }
+
+  chooseWorkflow(id) {
+    if (this.busy || this.pending) return;
+    try {
+      selectWorkflow(this.configuration(), id);
+      this.workflowId = id;
+      try { sessionStorage.setItem("herdr-team-workflow:selection", id); } catch {}
+      document.querySelector("#workflow-picker")?.close();
+      this.paint();
+    } catch (error) { this.notify(error.message, true); }
+  }
 
   remember() {
     const form = document.querySelector("#execution-start");
@@ -92,8 +135,9 @@ export class Execution {
     return `<section class="panel execution-intro"><div><h2>One task. One accountable team.</h2><p>Head is the coordinator service. HWF starts visible Devin workers for planning, implementation, and independent review.</p></div><span class="pill gray">EXECUTABLE MVP</span></section>
       <section class="panel execution-capabilities" id="execution-capabilities" aria-live="polite"></section>
       <div class="execution-layout"><section class="panel execution-setup"><h2>Start a real workflow</h2>
-        <p>The executable template is Planning → Implementation → Review. Plan approval is mandatory; the Workflow editor can also require final human acceptance.</p>
-        <form id="execution-start"><div class="field"><label for="execution-repository">Clean source repository</label><input id="execution-repository" name="repository" required maxlength="4096" value="${escape(this.draft.repository)}" placeholder="/absolute/path/to/a/clean/repository"></div>
+        <p>Choose how your team delivers, then describe the task. Planning always stops for your approval.</p>
+        <form id="execution-start"><section class="workflow-selection" aria-label="Selected workflow"><div class="workflow-selection-heading"><div><span class="eyebrow">WORKFLOW</span><h3 id="execution-workflow-name"></h3></div><button type="button" class="button secondary" data-execution-action="choose-workflow" aria-haspopup="dialog">Choose workflow ↓</button></div><div id="execution-workflow-preview"></div></section>
+        <div class="field"><label for="execution-repository">Clean source repository</label><input id="execution-repository" name="repository" required maxlength="4096" value="${escape(this.draft.repository)}" placeholder="/absolute/path/to/a/clean/repository"></div>
         <div class="field"><label for="execution-task">Task and acceptance criteria</label><textarea id="execution-task" name="task" required maxlength="5000" rows="5" placeholder="Describe one bounded task and how to verify it.">${escape(this.draft.task)}</textarea></div>
         <div class="field"><label for="execution-checks">Verification commands · JSON argument arrays</label><textarea id="execution-checks" name="checks" required rows="3" spellcheck="false">${escape(this.draft.checks)}</textarea><p class="field-hint">For example: [["npm", "test"]] or [["python3", "-m", "unittest"]]. These commands run in the isolated worktree, without a shell, with a 10-minute limit each.</p></div>
         <label class="execution-consent"><input type="checkbox" name="consent" ${this.draft.consent ? "checked" : ""} required><span>I authorize visible Devin agents to work in an isolated worktree and the service to execute exactly these verification commands. Agents keep my normal permissions; role instructions are not a sandbox.</span></label>
@@ -106,8 +150,13 @@ export class Execution {
     const capabilities = document.querySelector("#execution-capabilities");
     if (!capabilities) return;
     capabilities.innerHTML = `<strong>${this.capabilities.available ? `HWF ${escape(this.capabilities.version)} · ${escape(this.capabilities.workspace)}` : "Execution is not ready"}</strong><p>${escape(this.capabilities.message)}</p><small>HWF is optional for the demo and is never installed automatically. Use <code>python3 server.py --hwf /path/to/hwf</code> after explicitly installing HWF 0.15.1+.</small>`;
+    const selected = this.selectedWorkflow();
+    document.querySelector("#execution-workflow-name").textContent = WORKFLOWS.find(item => item.id === this.workflowId).title;
+    const preview = document.querySelector("#execution-workflow-preview");
+    preview.innerHTML = selected.issue ? `<p class="workflow-selection-error" role="status">${escape(selected.issue)}</p>` : `<ol class="workflow-preview">${selected.config.stages.map(stage => `<li><strong>${escape(stage.label)}</strong><small>${escape(selected.config.agents.find(agent => agent.id === stage.agentId).name)}</small><span>${stage.approval ? "Your approval" : "Automatic handoff"}</span></li>`).join("")}</ol><p class="field-hint">Service-run verification follows implementation. Selection applies to your next run only.</p>`;
+    document.querySelector("[data-execution-action=choose-workflow]").disabled = this.busy || !!this.pending;
     const submit = document.querySelector("#execution-submit");
-    submit.disabled = this.busy || !this.connected || !this.capabilities.available || (!!this.current && !terminal.has(this.current.status) && !this.pending);
+    submit.disabled = this.busy || !this.connected || !this.capabilities.available || (!this.pending && !!selected.issue) || (!!this.current && !terminal.has(this.current.status) && !this.pending);
     submit.textContent = this.pending ? "Reconcile the same start request →" : this.busy ? "Waiting for confirmation…" : "Create worktree and start planning →";
     const current = document.querySelector("#execution-current");
     if (!current) return;
@@ -137,7 +186,7 @@ export class Execution {
     try {
       if (!this.pending) this.pending = {
         id: crypto.randomUUID(), repository: this.draft.repository, task: this.draft.task,
-        checks: JSON.parse(this.draft.checks), consent: this.draft.consent, config: this.configuration()
+        checks: JSON.parse(this.draft.checks), consent: this.draft.consent, config: selectWorkflow(this.configuration(), this.workflowId)
       };
       this.busy = true;
       this.epoch++;
@@ -157,6 +206,8 @@ export class Execution {
   }
 
   async action(action) {
+    if (action === "choose-workflow") return this.openWorkflowPicker();
+    if (action === "close-workflow") return document.querySelector("#workflow-picker")?.close();
     if (action === "office") return this.showOffice();
     if (this.busy || !this.current) return;
     const run = this.current;

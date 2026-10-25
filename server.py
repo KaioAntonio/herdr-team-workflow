@@ -26,6 +26,7 @@ STATIC_FILES = {
     "/migration.js": ("migration.js", "text/javascript; charset=utf-8"),
     "/office.js": ("office.js", "text/javascript; charset=utf-8"),
     "/execution.js": ("execution.js", "text/javascript; charset=utf-8"),
+    "/workflows.js": ("workflows.js", "text/javascript; charset=utf-8"),
     "/favicon.svg": ("favicon.svg", "image/svg+xml"),
 }
 WORKSPACE = os.environ.get("HERDR_WORKSPACE_ID", "")
